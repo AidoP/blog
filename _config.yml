@@ -11,3 +11,14 @@ timezone: Australia/Perth
 
 plugins:
     - jekyll-include-cache
+
+defaults:
+    # _posts
+    - scope:
+        path: ""
+        type: posts
+    values:
+        layout: single
+        comments: true
+        share: true
+        related: true
