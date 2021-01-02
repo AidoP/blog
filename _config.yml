@@ -1,4 +1,4 @@
-theme: minimal-mistakes-jekyll
+remote_theme: "mmistakes/minimal-mistakes@4.21.0"
 title: "AidoP's Blog"
 masthead_title: "Blog"
 subtitle: "A loose collection of thoughts"
