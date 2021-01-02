@@ -6,6 +6,8 @@ name: "AidoP"
 url: "https://aidop.github.io"
 baseurl: "/blog"
 repository: "AidoP/blog"
-
 minimal_mistakes_skin: "dark"
 timezone: Australia/Perth
+
+plugins:
+    - jekyll-include-cache
