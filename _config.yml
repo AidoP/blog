@@ -13,7 +13,8 @@ plugins:
     - jekyll-include-cache
 
 defaults:
-    - scope:
+  -
+    scope:
         path: ""
         type: posts
     values:
