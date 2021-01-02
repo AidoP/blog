@@ -1,2 +1,12 @@
-source: .
+source: src
+theme: minimal-mistakes-jekyll
+title: "AidoP's Blog"
+masthead_title: "Blog"
+subtitle: "A loose collection of thoughts"
+name: "AidoP"
+url: "https://aidop/github.io"
+baseurl: "/blog"
+repository: "AidoP/blog"
+
+minimal_mistakes_skin: "dark"
 timezone: Australia/Perth
