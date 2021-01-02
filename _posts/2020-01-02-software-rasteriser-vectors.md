@@ -1,5 +1,4 @@
 ---
-layout: post
 title: "Writing a Software Rasteriser: 0.Vectors"
 ---
 
