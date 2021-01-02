@@ -12,7 +12,7 @@ Our goal is to replace the GPU with our own replacement which may not be nearly 
 
 By the way, I'll be using Rust. It shouldn't be too hard to follow even if it is your first time with it but language doesn't matter much for concepts anyway so don't worry if it looks like gibberish to you.
 
-The repo is available at [https://github.com/AidoP/tendon](AidoP/tendon).
+The repo is available at [AidoP/tendon](https://github.com/AidoP/tendon).
 
 # Vectors, Matrices and Maths
 
@@ -79,4 +79,4 @@ pub struct Vector3 {
     pub fn magnitude(self) -> f64 {
 ~~~
 
-And so on... Please keep in mind that [https://bitbashing.io/comparing-floats.html](floats cannot be compared) using `==` without the sky falling down which is why I've taken the same approach as the Rust stdlib team in ensuring they are close enough, or in other words, the difference between the result and the expected result are very close indeed. If you use `$ cargo test` now it should display something like ![cargo test results](/assets/cargo_test_success.png).
+And so on... Please keep in mind that [floats cannot be compared](https://bitbashing.io/comparing-floats.html) using `==` without the sky falling down which is why I've taken the same approach as the Rust stdlib team in ensuring they are close enough, or in other words, the difference between the result and the expected result are very close indeed. If you use `$ cargo test` now it should display something like ![cargo test results](/blog/assets/cargo_test_success.png).
