@@ -15,7 +15,7 @@ The repo is available at [AidoP/tendon](https://github.com/AidoP/tendon).
 
 # Vectors, Matrices and Maths
 
-To start our journey we need a solid maths library behind our beneath our feet to prevent us falling too far. Computer graphics is fairly maths heavy, but for the basics we only need to understand Vectors and Matrices.
+To start our journey we need a solid maths library beneath our feet to prevent us falling too far. Computer graphics is fairly maths heavy, but for the basics we only need to understand Vectors and Matrices.
 
 Start a new project by creating a directory then using `$ cargo init`{:.language-shell} inside. Now we should add a `src/lib.rs` file on the offchance we want to reuse components of our program, such as the maths library.
 The real reason you should do this will come about later. `lib.rs` needs to know where to find our future maths module so we add, and re-export it as so:
@@ -26,6 +26,8 @@ mod maths;
 // You probably shouldn't do this in a real library
 pub use maths::*;
 ~~~
+
+## Vectors
 
 We can get into it now by creating `src/maths.rs` and adding our first structure, a 3 dimensional vector. Rather than storing the length and direction of the vector directly we will store them together by representing the vector in terms of its dimensional `x`, `y` and `z` components. Unsurprisingly this sort of vector is named a component vector.
 
@@ -82,7 +84,7 @@ impl Vector3 {
 And so on... Please keep in mind that [floats cannot be compared](https://bitbashing.io/comparing-floats.html) using `==` without the sky falling down which is why I've taken the same approach as the Rust stdlib team in ensuring they are close enough, or in other words, the difference between the result and the expected value is minimal. If you use `$ cargo test` now it should display something like
 ![cargo test results](/blog/assets/cargo_test_success.png)
 
-The vector structure is still not very useful without the basic math operators implemented. They can be imported from `std::ops`. Useful operations include addition, subtraction, multiplication and division by a scalar value (a single float). Only addition and subtraction should be defined for the other operand being a vector which we will discuss in a moment. Doc-comments will not apply for implementing traits but tests can still be written in the same way.
+The vector structure is still not very useful without the basic math operators implemented. They can be imported from `std::ops`. Useful operations include addition, subtraction, multiplication and division by a scalar value (a single float). Only addition and subtraction should be defined for the other operand being a vector which we will discuss in a moment. Doc-comments will not apply for implementing traits but tests can still be written in the same way if you want to be very thorough.
 
 At the top of `maths.rs` add
 
@@ -103,16 +105,79 @@ impl Add<f64> for Vector3 {
 }
 impl Add for Vector3 {
     type Output = Self;
-    fn add(self, rhs: Self) -> Self {
+    fn add(self, vector: Self) -> Self {
         Self {
-            x: self.x + rhs.x,
-            y: self.y + rhs.y
-            z: self.z + rhs.z
+            x: self.x + vector.x,
+            y: self.y + vector.y
+            z: self.z + vector.z
         }
     }
 }
 ~~~
 
-You get the idea. The reason why we only implement `Mul<f64>` and **not** `Mul<Vector3>` is because there are two types of multiplication for vectors, dot product and cross product. You could implement it in the same way we did for addition and subtraction but that would give us component-wise scaling, a less useful operation, but we would be better off making that a function rather than overloading multiplication and giving us a 3rd potentially confusing, multiplication definition.
+You get the idea. The reason why we only implement `Mul<f64>` and **not** `Mul<Vector3>` is because there are two types of multiplication for vectors, dot product and cross product. Although you could implement it in the same way we did for addition and subtraction but that would give us component-wise scaling, a less useful operation, but we would be better off making that a function rather than overloading multiplication and giving us a 3rd potentially confusing, multiplication definition.
 
 In the original `impl Vector3` we should add dot and cross product. Dot product returns a scalar value rather than a vector is useful as among other tricks, it can be used to derive the angle between two vectors where `a.dot(b)` is 0 when `a` and `b` are perpendicular one another and 1 when they are parallel, for unit vectors. Dot product for a component vector is simply `a.x * b.x + a.y * b.y + a.z * b.z`.
+
+~~~rust
+/// The dot (scalar) product of self and other.
+/// ```rust
+/// use tendon::*;
+/// let a = Vector3 { x: 3.0, y: 4.0, z: 5.0 };
+/// let b = Vector3 { x: -1.0, y: 1.5, z: 0.5 };
+/// let dif = a.dot(b) - 5.5;
+/// assert!(dif.abs() < 1e-10);
+/// ```
+pub fn dot(self, other: Self) -> f64 {
+    self.x * other.x + self.y * other.y + self.z * other.z
+}
+~~~
+
+Cross product is not quite as simple, returning a vector. `a x b` (`a` *cross* `b`) is only defined for 3-dimensional vectors and returns a vector that is perpendicular both of the other vectors, for example, if I had a vector parallel the x-axis and *crossed* it with a vector parallel the y-axis we would get a vector parallel the z-axis. Again there are various mathematical tricks that we can use with cross products as well as its utility in providing us with the normal of a plane, defined by two direction vectors.
+
+~~~rust
+/// The cross (vector) product of self and other.
+/// ```rust
+/// use tendon::*;
+/// let x = Vector3 { x: 1.0, y: 0.0, z: 0.0 };
+/// let y = Vector3 { x: 0.0, y: 1.0, z: 0.0 };
+/// let dif = x.cross(y) - Vector3 { x: 0.0, y: 0.0, z: 1.0 };
+/// const TINY: f64 = 1e-10;
+/// assert!(dif.x.abs() < TINY && dif.y.abs() < TINY && dif.z.abs() < TINY);
+/// ```
+pub fn cross(self, other: Self) -> Self {
+    Self {
+        x: self.y * other.z - self.z * other.y,
+        y: self.z * other.x - self.x * other.z,
+        z: self.x * other.y - self.y * other.x
+    }
+}
+~~~
+
+The Vector3 structure is looking pretty slick now with everything we could want for now. A Vector2 is next on the list but I won't cover it here since it is almost identical to its higher-dimension sibling. Simply remove the z-component and the cross product function after a highly sophisticated copy-paste. Looking back at the test for cross product and seeing all those `0.0`'s is a great reminder that we missed some last functions we will proably want in the future. First we will want to implement `Default` on our vectors to get an easy zero vector, this could be done manually in an `impl`, or since `f64` already implements `Default` it could simply be added into the derive list at the top of the function like so.
+
+~~~rust
+#[derive(Copy, Clone, Debug, Default)]
+pub struct Vector3 { ... }
+~~~
+
+An all `1.0` vector may also be handy so let's add that as a constant value.
+
+~~~rust
+impl Vector3 {
+    pub const ONE: Self = Self { x: 1.0, y: 1.0, z: 1.0 };
+    ...
+}
+~~~
+
+Ok, *now* it is done!
+
+## An extra dimension & Matrix4
+
+Vectors are pretty powerful but doing certain operations on them is a little difficult and slow. Even highly complex transformations can be done with a matrix multiplication making them pretty good for easily transforming a large collection of vectors. This is going to be especially important once we try turning 3-dimensional points into 2-dimensional points on a screen. There is another catch however. For reasons we will discuss when writing the renderer an extra dimension is needed! That means we must once again duplicate our vector structure to create a Vector4. Again, it will use all the same operations, but this time including a new component conventionally named `w`. I suggest you also name it `w` to avoid confusion in the future.
+
+With Vector4 finished (last vector, I promise) we can move onto our matrix type. Matrix4 will have four rows and four columns of floats stored in an array of array of floats. To make accessing them as row by column instead of column by row we use the outer array as the rows array and the inner one for columns. Additionally, there is only one field which doesn't really make much sense to name since **it** is the matrix, so we can use fancy tuple struct in Rust.
+
+~~~rust
+pub struct Matrix4([[f64; 4]; 4]);
+~~~
