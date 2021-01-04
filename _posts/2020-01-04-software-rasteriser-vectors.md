@@ -5,7 +5,7 @@ title: "Writing a Software Rasteriser: 0.Vectors"
 The single most expensive component of your PC is *probably* your graphics card. Despite this, you mainly use it for one thing: computer graphics. So what makes it so special?
 What your GPU is mostly doing is drawing things to the screen, in batches to make it much faster, doing so by drawing triangles.
 The rasterisation, converting to a flat image of pretty pixels, of triangles is what the GPU excels at and is what allows it to display 2D games and interfaces as well as complex 3D scenes.
-Our goal is to replace the GPU with our own replacement which may not be nearly as fast, but a good learning experience as well as a challenge, though it shouldn't be hard as id Software have already done it with much, much slower hardware and without all of the problems solved for them. Nontheless, we will manage to struggle along the way, as that is how we learn.
+Our goal is to replace the GPU with our own software which may not be nearly as fast, but a good learning experience as well as a challenge, though it shouldn't be hard as id Software have already done it with much, much slower hardware and without all of the problems solved for them. Nontheless, we will manage to struggle along the way, as that is how we learn. On top of the software rasteriser we will build a basic 3d game using binary space partitioning, a technique to compensate for the slow render speed.
 
 By the way, I'll be using Rust. It shouldn't be too hard to follow even if it is your first time with it but language doesn't matter much for concepts anyway so don't worry if it looks like gibberish to you.
 
