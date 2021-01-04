@@ -2,8 +2,6 @@
 title: "Writing a Software Rasteriser: 0.Vectors"
 ---
 
-# Introduction
-
 The single most expensive component of your PC is *probably* your graphics card. Despite this, you mainly use it for one thing: computer graphics. So what makes it so special?
 What your GPU is mostly doing is drawing things to the screen, in batches to make it much faster, doing so by drawing triangles.
 The rasterisation, converting to a flat image of pretty pixels, of triangles is what the GPU excels at and is what allows it to display 2D games and interfaces as well as complex 3D scenes.
