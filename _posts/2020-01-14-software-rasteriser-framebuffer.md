@@ -96,9 +96,9 @@ We should also go back and add a doc-comment and test.
 ~~~rust
 /// Provides access to the linux framebuffer device.
 /// Requires that the user is in the `video` group.
-/// ```rust
+/// ```
 /// use tendon::*;
-/// let fb = Framebuffer::new();
+/// let fb = Framebuffer::new().expect("Unable to create framebuffer, are you in the `video` group?");
 /// ```
 pub struct Framebuffer {...}
 ~~~
@@ -193,8 +193,45 @@ Back in the world of Rust we can now implement a function to allow us to correct
 ~~~rust
     pub fn set(&mut self, x: usize, y: usize, colour: Colour) {
         let pos = (x + self.x_offset as usize) + (y + self.y_offset as usize) * self.line_length as usize;
-        unsafe {*self.buffer.add(pos) = *colour }
+        unsafe {*self.buffer.add(pos) = colour.convert(self) }
     }
 ~~~
 
-Everything looks ok, but now there is a new `Colour` type we haven't yet defined. Without this type we would be writing a raw `u32` whose byte order depends on the system and does not necessarily align with the layout of the colour channels. We can instead construct a `Colour` which we know to be formatted correctly using the `{red,green,blue}_offset` fields.
+Everything looks ok, but now there is a new `Colour` type we haven't yet defined. Without this type we would be writing a raw `u32` whose byte order depends on the system and does not necessarily align with the layout of the colour channels. We can instead construct a `Colour` which we know to be formatted correctly using the `{red,green,blue}_offset` fields. Colour will be represented as a `u32` internally to align with our framebuffer.
+
+~~~rust
+#[derive(Copy, Clone, Debug)]
+#[repr(transparent)]
+pub struct Colour(pub u32);
+~~~
+
+We use `#[repr(transparent)]` to tell the Rust compiler to ensure the structure is the exact same as a `u32` in memory. You might wonder why we bother using a seperate type at all then, and the answer to that is that it ensures that when we ask for a `Colour`, we really get a one rather than some arbitrary number. This is extending the type system to better ensure program correctness. We also make sure to do the conversion late so that we can store a colour before we know the layout of a colour for a particular system, such as when we eventually store material colours. Each channel is shifted so the colour bytes start at 0 before being shifted back to where the graphics card expects it, then being added to the other channels using the bitwise or (`|`) operator.
+
+~~~rust
+impl Colour {
+    pub fn convert(self, fb: &Framebuffer) -> u32 {
+        (self.0 & 0xFF00_0000) >> 24 << fb.red_offset |
+        (self.0 & 0x00FF_0000) >> 16 << fb.green_offset |
+        (self.0 & 0x0000_FF00) >> 8 << fb.blue_offset
+    }
+}
+~~~
+
+Those last 8 bits of the u32 are available for the alpha channel which determines transparency. Transparency doesn't typically mean anything on a screen since there is nothing behind the framebuffer, but it does mean something for images and textures, which means if you want to take a screenshot by copying the framebuffer to disk you would probably want to set the alpha channel too. The documentation isn't great, but some hardware may also care about it so if you are having an issue add the last channel like we did above.
+
+Now when we want to specify a colour we can simply use `Colour(0xRRGGBBAA)` where `RGBA` correspond to the hexadecimal brightness values for each channel.
+
+We also need to provide a doctest for that last function, give it a shot blind this time.
+
+# On Tests
+
+So we are done now, we have access to the framebuffer device from Rust with (mostly)correct colour handling. Our doctests however have a major problem! When we run `cargo test` there is no problem, but what if we wanted to run our tests in GitLab CI or GitHub Actions? The containers that the test would run in there doesn't have a screen, write permissions to `fb0` or a framebuffer device at all! As such we shouldn't use these for actual testing but just for a demonstration to the user.
+
+~~~rust
+/// ```no_run
+/// use tendon::*;
+/// let fb = Framebuffer::new();
+/// ```
+~~~
+
+Well that is all for now! The [next item on our list](/blog/) is the really exciting one, drawing to the screen. We will be writing the triangle rasteriser, the core component of a 3D rendering system. 
