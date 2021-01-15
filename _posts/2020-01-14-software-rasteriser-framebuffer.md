@@ -197,6 +197,8 @@ Back in the world of Rust we can now implement a function to allow us to correct
     }
 ~~~
 
+> NOTE: you should see the next post before using this function in something you publish
+
 Everything looks ok, but now there is a new `Colour` type we haven't yet defined. Without this type we would be writing a raw `u32` whose byte order depends on the system and does not necessarily align with the layout of the colour channels. We can instead construct a `Colour` which we know to be formatted correctly using the `{red,green,blue}_offset` fields. Colour will be represented as a `u32` internally to align with our framebuffer.
 
 ~~~rust
