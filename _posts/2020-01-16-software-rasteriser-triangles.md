@@ -1,10 +1,7 @@
 ---
 title: "Writing a Software Rasteriser: 2.Triangle Rasterisation"
 description: "Implement triangle rasterisation and texture mapping using Barycentric coordinates. The core functions of a GPU."
-image:
-    path: "/blog/assets/so_pretty_triangle.png"
-    width: 1366
-    height: 768
+image: "/blog/assets/so_pretty_triangle.png"
 ---
 
 # Memory Safety is Important
