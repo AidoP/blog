@@ -80,27 +80,30 @@ pub fn draw_tri(&mut self, tri: Tri) {
 }
 ~~~
 
-There are a few ways to draw a triangle, lets way up the **pro**s and **con**s of a some.
+There are a few ways to draw a triangle, lets weigh up the **pro**s and **con**s of some.
 
-The simplest one the has probably come to your mind is to just to fill the box around the triangle from `(min(x), min(y))` to `(max(x), max(y))` and test each pixel for being inside the triangle.
+The simplest one that has probably come to your mind is to just to fill the box around the triangle from `(min(x), min(y))` to `(max(x), max(y))` and test each pixel for being inside the triangle.
+
 ![Drawing a triangle by drawing a box and discarding or keeping regions that fall inside the triangle](/blog/assets/triangle_discard_keep.png)
 
 This approach is simple and only draws over each pixel once, however, it wastes a lot of time checking unused pixels and the check itself is not very cheap either.
 
 
-We may also follow the line down by stepping down by the gradient each time, a simple addition, and then draw that line horrizontally across the screen.
+We may also follow the line down, stepping down by the gradient each time, a simple addition, and then drawing that line horizontally across the screen.
+
 ![Drawing a triangle by going through each scanline](/blog/assets/triangle_scanlines.png)
 
 This approach is slightly more complicated and requires maybe segmenting the triangle, but it does draw each pixel exactly once, and only if it is actually inside the triangle.
 
 Another approach would be to draw lines from point `a` to progressively accross the line `BC`. The line drawing algorithm used is generally [Bresenham's algorithm](https://en.wikipedia.org/wiki/Bresenham%27s_line_algorithm).
+
 ![Drawing a triangle by drawing lines progressively](/blog/assets/triangle_bresenhams.png)
 
 As is obvious there is a lot of overdraw near the convergence point. Drawing a pixel more than once is not much of an issue now, sure, but in the future if we want to draw slightly transparent objects and do alpha blending then the overdraw would mean that at best we need a second buffer to allow the tracking of draws so we can tell if it is one of the extra draws or not.
 
 We will take the second option since the only compromise is to our laziness. If you want more information on these three approaches [this page does a decent job explaining things](http://www.sunshine2k.de/coding/java/TriangleRasterization/TriangleRasterization.html). My approach to their *"standard algorithm"* is slightly different as I don't completely split the triangle into two but the idea is the same.
 
-The first step is to sort the points by height so that we can make certain assumptions, such as which edge is the highest and which point is in the middle. All of the code for now is inside the `Framebuffer::Draw_tri()` method.
+The first step is to sort the points by height so that we can make certain assumptions, such as which edge is the highest and which point is in the middle. All of the code for now is inside the `Framebuffer::draw_tri()` method.
 
 ~~~rust
 let mut a = 0;
