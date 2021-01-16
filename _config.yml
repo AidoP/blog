@@ -11,6 +11,7 @@ timezone: Australia/Perth
 
 plugins:
     - jekyll-include-cache
+    - jekyll-seo-tag
 
 defaults:
   -

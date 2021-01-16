@@ -1,5 +1,7 @@
 ---
 title: "Writing a Software Rasteriser: 2.Triangle Rasterisation"
+image: "/blog/assets/so_pretty_triangle.png"
+description: "Implement triangle rasterisation and texture mapping using Barycentric coordinates. The core functions of a GPU."
 ---
 
 # Memory Safety is Important
