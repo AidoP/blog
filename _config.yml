@@ -10,12 +10,15 @@ minimal_mistakes_skin: "dark"
 timezone: Australia/Perth
 
 plugins:
-    - jekyll-include-cache
-    - jekyll-seo-tag
+  - jekyll-include-cache
+  - jekyll-seo-tag
+
+exclude:
+  - Gemfile
+  - Gemfile.lock
 
 defaults:
-  -
-    scope:
+  - scope:
         path: ""
         type: posts
     values:
