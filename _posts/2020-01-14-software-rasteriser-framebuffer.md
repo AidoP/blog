@@ -236,4 +236,4 @@ So we are done now, we have access to the framebuffer device from Rust with (mos
 /// ```
 ~~~
 
-Well that is all for now! The [next item on our list](/blog/2020/01/16/software-rasteriser-triangles.html) is the really exciting one, drawing to the screen. We will be writing the triangle rasteriser, the core component of a 3D rendering system. 
+Well that is all for now! The [next item on our list](/blog/2020/01/16/software-rasteriser-triangles) is the really exciting one, drawing to the screen. We will be writing the triangle rasteriser, the core component of a 3D rendering system. 
