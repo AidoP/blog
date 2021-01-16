@@ -256,13 +256,56 @@ Make sure to use the latest version available to you and make any necessary chan
 
 ~~~rust
 pub fn dump<P: AsRef<Path>>(&self, path: P) -> image::ImageResult<()> {
-    let mut img = image::ImageBuffer::new(1366, 768);
+    let mut img = image::ImageBuffer::new(self.x_res, self.y_res);
     for (x, y, pixel) in img.enumerate_pixels_mut() {
         let (r, g, b) = Colour::u32_to_rgb(self.get(x as _, y as _), self);
         *pixel = image::Rgb([r, g, b])
     }
     img.save(path)
 }
+~~~
+
+We also need two new variables to be saved when we open the framebuffer so we know the resolution of the image to save. We carefully modify the Rust structure
+
+~~~rust
+pub struct Framebuffer {
+    buffer: *mut u32,
+    buffer_len: usize,
+    bytes_per_pixel: u32,
+    red_offset: u32,
+    green_offset: u32,
+    blue_offset: u32,
+    x_offset: u32,
+    y_offset: u32,
+    x_res: u32,
+    y_res: u32,
+    pub line_length: u32
+}
+~~~
+
+and the C strcture to match so that we avoid undefined behaviour.
+
+~~~c
+struct fb {
+    unsigned* buffer;
+    size_t buffer_len;
+    unsigned bytes_per_pixel;
+    unsigned red_offset;
+    unsigned green_offset;
+    unsigned blue_offset;
+    unsigned x_offset;
+    unsigned y_offset;
+    unsigned x_res;
+    unsigned y_res;
+    unsigned line_length;
+};
+~~~
+
+And we also make sure to set the x and y resolutions in `fb_create()` too.
+
+~~~c
+fb.x_res = var_info.xres;
+fb.y_res = var_info.yres;
 ~~~
 
 # Texture Mapping
@@ -326,7 +369,101 @@ self.texture.get(
 )
 ~~~
 
+Next up is interpolating texture coordinates for each pixel we texture. For the record, each *pixel* on a rasterised triangle is called a fragment and it is given its colour by a *fragment shader*, a program that runs on the GPU which may do things like texture sampling. We have a [*fixed pipeline*](https://www.khronos.org/opengl/wiki/Fixed_Function_Pipeline) with no need for different fragment shaders, we only care about textured surfaces so far. The interpolation of values from triangle vertices is normally done using a [Barycentric coordinate system](https://en.wikipedia.org/wiki/Affine_space#Barycentric_coordinates). Simply put, each of the `UV`s is scaled to its *correct proportion* for that fragment. The sum of *proportions* is obviously 1. Each of these *proportions* can be seen as the percentage of the whole triangle that sub-triangles given by the division around our fragment location.
+![A triangle split into 3 smaller triangles around the fragment point. The proportion of the sub triangles area to the total area is the same proportion used for our texture coordinate weights.](/blog/assets/barycentric_coordinates.png)
 
+Each of the *lambda*s corresponds to the percentage of area that sub-triangle takes from the total, or weights, that means when the green triangle covers all of the area for a lambda value of 1, the fragment is on point `a`. This is why we use the triangle opposite a point. The values at each vertex are weighted, or scaled, then combined to do the interpolation, represented mathematically by `p = x*a + y*b + z*c` where `x`, `y` and `z` correspond to the repective area proportion and `p` the fragment colour. I recommend you check out [Scratchapixel's awesome tutorial on barycentric coordinates for a more in-depth look](https://www.scratchapixel.com/lessons/3d-basic-rendering/ray-tracing-rendering-a-triangle/barycentric-coordinates). Now that means we need to find the area of each triangle, a feat easily achieved using the [scalar triple product](https://en.wikipedia.org/wiki/Triple_product#Geometric_interpretation). At a first glance this looks kind of useless, we don't care about the volume of a parallelepiped at all! But think back, how do we calculate the area of a triangle? Using `0.5 * base * height`, or half the area of a parallelogram, and a paralellogram is just a flat parallelepiped. Triple product is pretty easy to calculate since we have very simple definitions of both dot and cross product which use only addition, subtraction and multiplication. What's more is that we are using constant `1`'s and `0`'s since we are converting 2d vectors to 3d vectors and using a constant height of `1` for the parallelepiped so we can simplify the equation a lot. When doing some mathematics nothing beats a pen and paper so let's pull some out and get to work.
 
+![Simplifying scalar triple product for finding the area of a triangle given 2 edge vectors](/blog/assets/simplify_triple_product.jpg)
 
-There are many things I have neglected to do in this implementation. For example, our triangle rasteriser makes no guarantee about shared edges which means we could see thin gaps between triangles on complex geometry.
+Pretty simple right. Now we can easily translate this to Rust in `Vector2::area_tri()`. Keep in mind this gives us the `signed area` while we only care about the actual area.
+
+~~~rust
+pub fn area_tri(self, other: Self) -> f64 {
+    (self.x * other.y - self.y * other.x).abs() * 0.5
+}
+~~~
+
+This will be the last reminder so hopefully it is drilled in by now, don't forget to document and add tests. Now we can add a function, `Tri::interpolate()` which takes the geometry, the `UV`s to interpolate and the position of the fragment. We need to then calculate the areas of the sub triangles and total area using the edge vectors since these do not contain a translation, just the length and direction. To get the area we calculate the two edge vectors enclosing the area, being mindful of the direction we give them. I name each edge by the point it is opposite which makes it obvious which area it corresponds to and also avoids slightly more confusing `AB` line names. We can choose the internal edge by noting the direction of the first edge, which I recommend you draw on paper.
+
+~~~rust
+    pub fn interpolate(&self, other: &Tri, x: f64, y: f64) -> Vector2 {
+        let p = Vector2 { x, y };
+        let edge_a = self[1] - self[2];
+        let edge_b = self[0] - self[2];
+        let edge_c = self[0] - self[1];
+        let area_a = edge_a.area_tri(p - self[2]);
+        let area_b = edge_b.area_tri(p - self[2]);
+        let area_c = edge_c.area_tri(p - self[1]);
+        // More to come...
+    }
+~~~
+
+Next we must convert the area to a proportion of the total area so we can use it as a weighting. I use `edge_a` and `edge_b` because they point in the correct direction to encompass the areas of the triangle.
+
+~~~rust
+    let total_area = edge_a.area_tri(edge_b);
+    let weight_a = area_a / total_area;
+    let weight_b = area_b / total_area;
+    let weight_c = area_c / total_area;
+~~~
+
+These weights are our `lambda` values. We can now do the interpolation using these weights. Because `UV` coordinates are 2 dimensional we interpolate twice. If we were interpolating colours we would do it thrice or more.
+
+~~~rust
+Vector2 {
+    x: weight_a * other[0].x + weight_b * other[1].x * weight_c * other[2].x,
+    y: weight_a * other[0].y + weight_b * other[1].y * weight_c * other[2].y,
+}
+~~~
+
+The final cog to put in place is to actually use the interpolated coordinates and sample when setting a pixel.
+
+In `Framebuffer::draw_tri()` we now change the two occurences of
+
+~~~rust
+self.set(x, y, Colour(0xFF0000FF))
+~~~
+
+to 
+
+~~~rust
+let uv = tri.interpolate(&uvs, x as _, y as _);
+self.set(x, y, sampler.sample(uv.x, uv.y))
+~~~
+
+All that is left to do now is load a texture to draw. Before doing that I couldn't miss the opportunity to do the classic computer graphics equivalent of *"Hello, World!"*.
+
+![A very pretty triangle](/blog/assets/so_pretty_triangle.png)
+
+All you have to do is use a `Vector3` of RGB colours instead of a `Vector2` of texture coordinates and interpret the interpolated value as a colour instead of coordinates. If you still need some guidance to do this yourself see [this commit](https://github.com/AidoP/tendon/commit/0e6a164fe2115d3363af527e917e6b25347d28fb).
+
+Back to implementing texture mapping, we define `Texture::load()` as 
+
+~~~rust
+pub fn load<P: AsRef<Path>>(path: P) -> image::ImageResult<Self> {
+    use image::{GenericImageView, Pixel};
+    let image = image::open(path)?;
+    let (width, height) = image.dimensions();
+    let buffer = image.pixels().map(|(_, _, p)|
+        Colour(u32::from_be_bytes(p.to_rgba().0))
+    ).collect();
+    Ok(Self {
+        buffer,
+        width: width as _,
+        height: height as _
+    })
+}
+~~~
+
+Which is just using the image crate to load an image in any supported format, getting its size, and converting each colour to our native-endian representation before collecting into an owned buffer. We use the function `u32::from_be_bytes()` to because we want a native endian `0xRRGGBBAA` from `[r, g, b, a]` of which the latter is the big-endian representation of the former.
+
+That is all! We can test it now by loading a texture and constructing some test-case triangles which test some of the possible edge cases, such as wrapping. It is just a bunch of coordinates which I won't waste space on here so [see the commit](https://github.com/AidoP/tendon/commit/68156bf0ebe6c704af56c77e4c3667e1ac529960#diff-42cb6807ad74b3e201c5a7ca98b911c5fa08380e942be6e4ac5807f8377f87fc) instead. I used the [GIMP capsicum](https://www.reddit.com/r/linux/comments/1e1nzm/why_the_fuck_does_gimp_even_have_this_useless/) as my testing image.
+
+![Drawing triangles with the GIMP capsicum texture mapped on top](/blog/assets/texture_mapping_triangles.png)
+
+It was a lot of effort but how amazing is that. Don't worry if it is super slow either, most of the delay right now is from our inefficient texture loading and, if you are taking a screenshot, framebuffer saving. Neither of these actions are on the hot path so we can live with slow startup or a slight screenshot freeze. I also haven't run it in release mode yet which introduces a lot of optimisations to speed things up.
+
+There are many things I have neglected to do in this implementation. For example, our triangle rasteriser makes no guarantee about shared edges which means we could see thin gaps between triangles on complex geometry. We are also still using screen coordinates rather than *normalised device coordinates* (NDC) and we haven't implemented clipping for when we try to draw a triangle offscreen. We also don't have a depth buffer to go along with the 3d normalised device coordinates, however, as we will be using binary space partitioning for level drawing a depth buffer will not actually be necessary. Remember, we have only implemented the most basic triangle rendering primitive, everything else will be layered upon what we have done so far.
+
+In the [next post](/blog/) we will cover clipping, and maybe do something else. We will see how long clipping takes and what else I may have forgotten.

@@ -308,4 +308,4 @@ impl Mul for Matrix4 {...}
 `cargo test` and it passed first time. Phew.
 
 
-We will be adding functions for constructing transformation matrices in the future, but for now, that is enough. The [next post](/blog/2020/01/14/software-rasteriser-framebuffer.md) will explore displaying to the screen using the Linux framebuffer device for CPU-based drawing.
+We will be adding functions for constructing transformation matrices in the future, but for now, that is enough. The [next post](/blog/2020/01/14/software-rasteriser-framebuffer.html) will explore displaying to the screen using the Linux framebuffer device for CPU-based drawing.
