@@ -23,3 +23,4 @@ defaults:
         comments: true
         share: true
         related: true
+        image: /blog/assets/default.png
