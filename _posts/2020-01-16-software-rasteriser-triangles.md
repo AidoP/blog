@@ -1,5 +1,4 @@
 ---
-layout: post
 title: "Writing a Software Rasteriser: 2.Triangle Rasterisation"
 description: "Implement triangle rasterisation and texture mapping using Barycentric coordinates. The core functions of a GPU."
 image:
