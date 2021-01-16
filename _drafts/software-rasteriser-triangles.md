@@ -265,10 +265,68 @@ pub fn dump<P: AsRef<Path>>(&self, path: P) -> image::ImageResult<()> {
 }
 ~~~
 
-Now we already have `image` which will be useful when we want to load textures for texture mapping in a moment. Texture mapping is done by interpolating between texture coordinates at each vertex of the triangle. This means we need another 3 `Vector2`'s to store all that information. Aditionally we need that afformentioned sampler, so let's edit the definition of `Framebuffer::draw_tri()`
+# Texture Mapping
+
+Now we already have `image` which will be useful when we want to load textures for texture mapping in a moment. Texture mapping is done by interpolating between texture coordinates at each vertex of the triangle. This means we need another 3 `Vector2`'s to store all that information. Aditionally we need that aformentioned sampler, so let's edit the definition of `Framebuffer::draw_tri()`. Our sampler is probably going to borrow a reference to some image data so we include a lifetime annotation to say we keep the sampler only for the duration of the function.
 
 ~~~rust
-pub fn draw_tri(&mut self, tri: Tri, uvs: Tri, sampler: &Sampler) {
+pub fn draw_tri<'a>(&mut self, tri: Tri, uvs: Tri, sampler: &Sampler<'a>) {
     // ...
 }
 ~~~
+
+Let's start with the sampler since it's design might influence our function a little more than the texture mapping logic. A sampler is a view into some texture data with a function to retrieve a pixel, but remember, the coordinates for pixels are not integer indices, but rather float indices, an absolute necessity since we will be doing transformations such as perspective projection, further we will want to map texture coordinates between 0 and 1 to make them texture size agnostic. The interpolation of pixel data to best fit our sub-pixel texture coordinate is called [texture filtering](https://gaming.stackexchange.com/questions/48912/whats-the-difference-between-bilinear-trilinear-and-anisotropic-texture-filte), if you play games you may recognise the name along with options such as bilinear, trilinear and anisotropic filtering. These techniques smooth out values to make them feel less blocky, which is great when your game needs realistic looking textures, but for our programmer art we will be wanting to use nearest neighbour filtering which does no interpolation between pixels, instead choosing a single pixel colour, causing no smoothing to be done at all. When you hear nearest-neighbour filtering you will probably hear *"Minecraft Graphics"* alongside it. Conveniently enough for us nearest neighbour is about as simple as it gets. If you want bilinear or trilinear filtering instead [Scratchapixel](https://www.scratchapixel.com/lessons/mathematics-physics-for-computer-graphics/interpolation/trilinear-interpolation) has a good tutorial. With trilinear the third dimension, or backface, is to interpolate with mipmaps which are minimized images so that we can improve quality when zooming the texture out.
+
+~~~rust
+pub struct Sampler<'a> {
+    pub texture: &'a Texture
+}
+impl<'a> Sampler<'a> {
+    /// Get the pixel nearest `x` and `y`
+    pub fn sample(&self, x: f64, y: f64) -> Colour {
+        // Nearest Neighbour logic
+    }
+}
+~~~
+
+We also need to define the **owned** texture, that is, the buffer which is not borrowed, as well as a method to index it by integer values. Soon we will also add a function to load it from disk.
+
+~~~rust
+pub struct Texture {
+    pub buffer: Vec<Colour>,
+    pub width: usize,
+    pub height: usize
+}
+impl Texture {
+    pub fn get(&self, x: usize, y: usize) -> Colour {
+        #[cfg(debug_assertions)]
+        if x >= self.width {
+            panic!("Cannot index texture of width {} by x index {}", self.width, x)
+        }
+        self.buffer[x + y * self.width]
+    }
+}
+~~~
+
+We use conditional compilation to make sure accesses are in bounds on the x axis here in debug mode only. In release mode we can accept the visual artefact for the speed since Rust will still protect from a bad memory access and panic and we are not supposed to index out of bounds anyway. Now to add the texture filtering itself in `Sampler::sample()`.
+
+~~~rust
+self.texture.get(
+    f64::floor(x * self.texture.width as f64) as usize,
+    f64::floor(y * self.texture.height as f64) as usize
+)
+~~~
+
+Well that was anticlimactic. It won't be particularly fancy giving us aliasing and some pretty terrible artefacts when zooming the texture out, but it will work well enough for now. [Or will it?](https://www.youtube.com/watch?v=IfX1hJS0iGM) If we extend our triangle but don't want it to stretch the texture so we scale the UV coordinates with it we would end up with a UV outside of the range `0 to 1`. Rather than just panicing here we should either *clamp* to a particular border colour or wrap the texture so that it repeats. We will go with wrapping since that is very handy for large floor or wall textures. Since we want it in the range `0 to 1` we can simply take the fractional component. Conveniently since we are wrapping it doesn't matter that we are discarding `1.0` exactly since it wraps to `0.0` anyway. The `f64::fract()` method in Rust keeps the sign bit so we must also use `f64::abs()`.
+
+~~~rust
+self.texture.get(
+    f64::floor(x.fract().abs() * self.texture.width as f64) as usize,
+    f64::floor(y.fract().abs() * self.texture.height as f64) as usize
+)
+~~~
+
+
+
+
+There are many things I have neglected to do in this implementation. For example, our triangle rasteriser makes no guarantee about shared edges which means we could see thin gaps between triangles on complex geometry.
