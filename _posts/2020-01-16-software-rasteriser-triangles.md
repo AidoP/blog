@@ -5,7 +5,7 @@ image: "/blog/assets/so_pretty_triangle.png"
 ---
 
 # Memory Safety is Important
-Before we get started I let us talk about memory safety! In the last post we used a little bit of `unsafe` to interface with C and to index the framebuffer. Unsafe code is well, unsafe, so as a good Rust programmer you must be very sure that when you use `unsafe`, you guarantee program correctness. Were you looking really carefully in the last post? When we indexed the buffer last time, we used the `ptr::add()` function which is marked unsafe. Whenever you use an unsafe function you should [double check the documentation](https://doc.rust-lang.org/std/primitive.pointer.html#method.add) to see **why** it is unsafe and ensure that you can guarantee you are not breaking any of the rules assumed for safe usage.
+Before we get started let's talk about memory safety. In the last post we used a little bit of `unsafe` to interface with C and to index the framebuffer. Unsafe code is well, unsafe, so as a good Rust programmer you must be very sure that when you use `unsafe`, you guarantee program correctness. Were you looking really carefully in the last post? When we indexed the buffer last time, we used the `ptr::add()` function which is marked unsafe. Whenever you use an unsafe function you should [double check the documentation](https://doc.rust-lang.org/std/primitive.pointer.html#method.add) to see **why** it is unsafe and ensure that you can guarantee you are not breaking any of the rules assumed for safe usage.
 
 I recommend that when you use `unsafe` you leave a comment to say why your usage is still considered sound. Let us do that now for `Framebuffer::set()`, addressing the three dot points the documentation states.
 
