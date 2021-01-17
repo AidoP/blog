@@ -217,12 +217,13 @@ fn main() {
 }
 ~~~
 
-To see it we need to actually be in the tty so that our window manager doesn't draw over it. If we execute `cargo run` now we will see our little triangle. If you have errors make sure you are in the video group so that you have permission to open `/dev/fb0`.
+To see it we need need to be in the framebuffer console (or tty, `ctrl-alt-f2` when a display server is running) so that our window manager doesn't draw over it. If we execute `cargo run` now we will see our little triangle. If you have errors make sure you are in the video group so that you have permission to open `/dev/fb0`.
+
 ![a not-so-pretty triangle](/blog/assets/not_so_pretty_triangle.png)
 
 What a perfectly fine triangle. It isn't too pretty though, we haven't considered colours or textures yet. For our game we will only be wanting textured surfaces, which saves us having to implement different draw_tri functions, our equivalent to fragment shaders. For a textured surface you need two things, texture coordinates, normally named `UV`s and a way to get a pixel colour from a texture, normally called a texture sampler. But before that you were probably wondering how to take a screenshot of your triangle, so let's do that first.
 
-First we need a way to `Framebuffer::get` a pixel value from the framebuffer, this is more or less the same as `Framebuffer::set`.
+First we need a way to `Framebuffer::get()` a pixel value from the framebuffer, this is more or less the same as `Framebuffer::set()`.
 
 ~~~rust
 pub fn get(&self, x: usize, y: usize) -> u32 {
@@ -250,7 +251,7 @@ pub fn u32_to_rgb(colour: u32, fb: &Framebuffer) -> (u8, u8, u8) {
 }
 ~~~
 
-You should add a doc comment and test to that. Next we need a way to save to a common file format. Writing an image encoder is very much out of scope for us, and there is a crate that can do it much better than us anyway so let's just add `image` to our `Cargo.toml`
+You should add a doc comment and test to that. Next we need a way to save to a common file format. Writing an image encoder is very much out of scope for us, and [there is a crate that can do a better job](https://github.com/image-rs/image) than us anyway, so let's just add `image` to our `Cargo.toml`
 
 ~~~toml
 [dependencies]
@@ -306,7 +307,7 @@ struct fb {
 };
 ~~~
 
-And we also make sure to set the x and y resolutions in `fb_create()` too.
+And we also make sure to set the x and y resolutions in `fb_create()` on the C side too.
 
 ~~~c
 fb.x_res = var_info.xres;
@@ -375,6 +376,7 @@ self.texture.get(
 ~~~
 
 Next up is interpolating texture coordinates for each pixel we texture. For the record, each *pixel* on a rasterised triangle is called a fragment and it is given its colour by a *fragment shader*, a program that runs on the GPU which may do things like texture sampling. We have a [*fixed pipeline*](https://www.khronos.org/opengl/wiki/Fixed_Function_Pipeline) with no need for different fragment shaders, we only care about textured surfaces so far. The interpolation of values from triangle vertices is normally done using a [Barycentric coordinate system](https://en.wikipedia.org/wiki/Affine_space#Barycentric_coordinates). Simply put, each of the `UV`s is scaled to its *correct proportion* for that fragment. The sum of *proportions* is obviously 1. Each of these *proportions* can be seen as the percentage of the whole triangle that sub-triangles given by the division around our fragment location.
+
 ![A triangle split into 3 smaller triangles around the fragment point. The proportion of the sub triangles area to the total area is the same proportion used for our texture coordinate weights.](/blog/assets/barycentric_coordinates.png)
 
 Each of the *lambda*s corresponds to the percentage of area that sub-triangle takes from the total, or weights, that means when the green triangle covers all of the area for a lambda value of 1, the fragment is on point `a`. This is why we use the triangle opposite a point. The values at each vertex are weighted, or scaled, then combined to do the interpolation, represented mathematically by `p = x*a + y*b + z*c` where `x`, `y` and `z` correspond to the repective area proportion and `p` the fragment colour. I recommend you check out [Scratchapixel's awesome tutorial on barycentric coordinates for a more in-depth look](https://www.scratchapixel.com/lessons/3d-basic-rendering/ray-tracing-rendering-a-triangle/barycentric-coordinates). Now that means we need to find the area of each triangle, a feat easily achieved using the [scalar triple product](https://en.wikipedia.org/wiki/Triple_product#Geometric_interpretation). At a first glance this looks kind of useless, we don't care about the volume of a parallelepiped at all! But think back, how do we calculate the area of a triangle? Using `0.5 * base * height`, or half the area of a parallelogram, and a paralellogram is just a flat parallelepiped. Triple product is pretty easy to calculate since we have very simple definitions of both dot and cross product which use only addition, subtraction and multiplication. What's more is that we are using constant `1`'s and `0`'s since we are converting 2d vectors to 3d vectors and using a constant height of `1` for the parallelepiped so we can simplify the equation a lot. When doing some mathematics nothing beats a pen and paper so let's pull some out and get to work.
