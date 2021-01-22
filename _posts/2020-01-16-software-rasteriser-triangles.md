@@ -24,7 +24,7 @@ Uhhhh... We broke two of the rules specified by the function! If you draw to `80
 ~~~rust
     pub fn set(&mut self, x: usize, y: usize, colour: Colour) {
         let pos = (x + self.x_offset as usize) + (y + self.y_offset as usize) * self.line_length as usize;
-        if pos >= self.buffer_len {
+        if pos >= self.buffer_len / std::mem::size_of::<u32>() {
             panic!("Pixel ({}, {}) is out of framebuffer bounds", x, y)
         }
         // Safety: We have checked that the buffer access is in-bounds
@@ -43,7 +43,7 @@ But what about that last guarantee? Well on x86_64 we are fine since `pos` is no
             panic!("Pixel ({}, {}) is out of framebuffer bounds", x, y)
         }
         #[cfg(not(target_arch="x86_64"))]
-        if pos + self.buffer as usize >= isize::MAX {
+        if pos * std::mem::size_of::<u32>() + self.buffer as usize >= isize::MAX {
             panic!("Framebuffer cannot be indexed due to platform addressing constraints")
         }
         // Safety: We have checked that the buffer access is in-bounds
@@ -473,4 +473,10 @@ It was a lot of effort but how amazing is that. Don't worry if it is super slow 
 
 There are many things I have neglected to do in this implementation. For example, our triangle rasteriser makes no guarantee about shared edges which means we could see thin gaps between triangles on complex geometry. We are also still using screen coordinates rather than *normalised device coordinates* (NDC) and we haven't implemented clipping for when we try to draw a triangle offscreen. We also don't have a depth buffer to go along with the 3d normalised device coordinates, however, as we will be using binary space partitioning for level drawing a depth buffer will not actually be necessary. Remember, we have only implemented the most basic triangle rendering primitive, everything else will be layered upon what we have done so far.
 
-In the [next post](/blog/) we will cover clipping, and maybe do something else. We will see how long clipping takes and what else I may have forgotten.
+It should be noted that this implementation of Barycentric interpolation is not appropriate for use in 3-dimensional space as it only calculates the area in 2-dimensional screen space. There is a fair bit to know about the different coordinate spaces we will be using so for now we have stuck to screen space interpolation. In the next post, once we get a better understanding we will revisit triangle drawing to make it correct in 3D.
+
+If you are curious, here is a plane that is projected using perspective projection with texture mapping using our current implementation compared to one that is correct. Obviously, this looks wrong to our brains which see a square receding into the distance, but in screen space the area at the top is smaller than the area at the bottom, not actually the same size but further away.
+
+![A plane projected correctly, but with a very odd seam in the texture, next to one with perspective correct interpolation](barycentric_perspective_correction.png)
+
+In the [next post](/blog/) we will cover clipping and the extra dimensions we will need when clipping and processing the previously 3-dimensional geometry.
