@@ -34,7 +34,7 @@ Uhhhh... We broke two of the rules specified by the function! If you draw to `80
     }
 ~~~
 
-But what about that last guarantee? Well on x86_64 we are fine since `pos` is now limited by `buffer_len` which originiated from a `u32` and is therefore never going to overflow an `isize` since x86_64 has a virtual address space of 48 or 52 bits, leaving us quite a bit of extra room. There is still the (slight) possibilty of breaking this guarantee on other platforms so we should check it just in case on other platforms. To ensure we don't waste on time on the unecessary check on x86_64 we use [conditional compilation](https://doc.rust-lang.org/reference/conditional-compilation.html#target_arch).
+But what about that last guarantee? Well on x86_64 we are fine since `pos` is now limited by `buffer_len` which originated from a `u32` and is therefore never going to overflow an `isize` since x86_64 has a virtual address space of 48 or 52 bits, leaving us quite a bit of extra room. There is still the (slight) possibility of breaking this guarantee on other platforms so we should check it just in case on other platforms. To ensure we don't waste on time on the unnecessary check on x86_64 we use [conditional compilation](https://doc.rust-lang.org/reference/conditional-compilation.html#target_arch).
 
 ~~~rust
     pub fn set(&mut self, x: usize, y: usize, colour: Colour) {
@@ -132,7 +132,7 @@ let midpoint_x = tri[a].x + top_edge.y / high_edge.y * high_edge.x;
 let left_triangle = midpoint_x < tri[b].x;
 ~~~
 
-Next we actually need a way to travel down the line. The easiest and most efficient way is to just calculate the amount to go across by for each step down, or the inverse gradient. This does however introduce an additive floating point error and a bit of innacuracy which may make our triangle look a little funny in the extremes, but it is worth it since the alternative includes heavy computations for every pixel. The direction we step depends on if it is a left or right triangle so we switch to match. We also only want to draw portion above the midpoint if there actually is a top portion.
+Next we actually need a way to travel down the line. The easiest and most efficient way is to just calculate the amount to go across by for each step down, or the inverse gradient. This does however introduce an additive floating point error and a bit of inaccuracy which may make our triangle look a little funny in the extremes, but it is worth it since the alternative includes heavy computations for every pixel. The direction we step depends on if it is a left or right triangle so we switch to match. We also only want to draw portion above the midpoint if there actually is a top portion.
 
 ~~~rust
 if tri[a].y as usize != tri[b].y as usize {
@@ -158,7 +158,7 @@ for y in tri[a].y as usize .. tri[b].y as usize {
 }
 ~~~
 
-To now draw the lower half of the triangle we reset the start and end points, for both aleviating error and incase the top half didn't have any height, calculate the new gradient then do the nested loop with gradient updates again. Once again, we only do so if the lower half of the triangle exists.
+To now draw the lower half of the triangle we reset the start and end points, for both alleviating error and in-case the top half didn't have any height, calculate the new gradient then do the nested loop with gradient updates again. Once again, we only do so if the lower half of the triangle exists.
 
 ~~~rust
 if tri[b].y as usize != tri[c].y as usize {
@@ -258,7 +258,7 @@ You should add a doc comment and test to that. Next we need a way to save to a c
 image = "0.23"
 ~~~
 
-Make sure to use the latest version available to you and make any necessary changes when using the library. Finally we dump the image to disk by creating an image buffer then converting each pixel in the framebuffer to the matching RGB values and setting them in the image. `image` can save the image buffer to disk for us, we just need to propogate the potential errors to our future selves.
+Make sure to use the latest version available to you and make any necessary changes when using the library. Finally we dump the image to disk by creating an image buffer then converting each pixel in the framebuffer to the matching RGB values and setting them in the image. `image` can save the image buffer to disk for us, we just need to propagate the potential errors to our future selves.
 
 ~~~rust
 pub fn dump<P: AsRef<Path>>(&self, path: P) -> image::ImageResult<()> {
@@ -289,7 +289,7 @@ pub struct Framebuffer {
 }
 ~~~
 
-and the C strcture to match so that we avoid undefined behaviour.
+and the C structure to match so that we avoid undefined behaviour.
 
 ~~~c
 struct fb {
@@ -316,7 +316,7 @@ fb.y_res = var_info.yres;
 
 # Texture Mapping
 
-Now we already have `image` which will be useful when we want to load textures for texture mapping in a moment. Texture mapping is done by interpolating between texture coordinates at each vertex of the triangle. This means we need another 3 `Vector2`'s to store all that information. Aditionally we need that aformentioned sampler, so let's edit the definition of `Framebuffer::draw_tri()`. Our sampler is probably going to borrow a reference to some image data so we include a lifetime annotation to say we keep the sampler only for the duration of the function.
+Now we already have `image` which will be useful when we want to load textures for texture mapping in a moment. Texture mapping is done by interpolating between texture coordinates at each vertex of the triangle. This means we need another 3 `Vector2`'s to store all that information. Additionally we need that aforementioned sampler, so let's edit the definition of `Framebuffer::draw_tri()`. Our sampler is probably going to borrow a reference to some image data so we include a lifetime annotation to say we keep the sampler only for the duration of the function.
 
 ~~~rust
 pub fn draw_tri<'a>(&mut self, tri: Tri, uvs: Tri, sampler: &Sampler<'a>) {
@@ -366,7 +366,7 @@ self.texture.get(
 )
 ~~~
 
-Well that was anticlimactic. It won't be particularly fancy giving us aliasing and some pretty terrible artefacts when zooming the texture out, but it will work well enough for now. [Or will it?](https://www.youtube.com/watch?v=IfX1hJS0iGM) If we extend our triangle but don't want it to stretch the texture so we scale the UV coordinates with it we would end up with a UV outside of the range `0 to 1`. Rather than just [panicing](https://doc.rust-lang.org/std/macro.panic.html) here we should either *clamp* to a particular border colour or *wrap* the texture so that it repeats. We will go with wrapping since that is very handy for large floor or wall textures. Since we want it in the range `0 to 1` we can simply take the fractional component. Conveniently since we are wrapping it doesn't matter that we are discarding `1.0` exactly since it wraps to `0.0` anyway. The `f64::fract()` method in Rust keeps the sign bit so we must also use `f64::abs()`.
+Well that was anticlimactic. It won't be particularly fancy giving us aliasing and some pretty terrible artefacts when zooming the texture out, but it will work well enough for now. [Or will it?](https://www.youtube.com/watch?v=IfX1hJS0iGM) If we extend our triangle but don't want it to stretch the texture so we scale the UV coordinates with it we would end up with a UV outside of the range `0 to 1`. Rather than just [panicking](https://doc.rust-lang.org/std/macro.panic.html) here we should either *clamp* to a particular border colour or *wrap* the texture so that it repeats. We will go with wrapping since that is very handy for large floor or wall textures. Since we want it in the range `0 to 1` we can simply take the fractional component. Conveniently since we are wrapping it doesn't matter that we are discarding `1.0` exactly since it wraps to `0.0` anyway. The `f64::fract()` method in Rust keeps the sign bit so we must also use `f64::abs()`.
 
 ~~~rust
 self.texture.get(
@@ -379,7 +379,7 @@ Next up is interpolating texture coordinates for each pixel we texture. For the 
 
 ![A triangle split into 3 smaller triangles around the fragment point. The proportion of the sub triangles area to the total area is the same proportion used for our texture coordinate weights.](/blog/assets/barycentric_coordinates.png)
 
-Each of the *lambda*s (`λ`) corresponds to the percentage of area that each sub-triangle takes from the total area. This is the proportion, or weight, that we apply to a vertex when interpolating. This means when the green triangle covers all of the area for a `λ` value of 1, the fragment is on point `a`. This is why we use the triangle opposite a point. The values at each vertex are weighted, or scaled, then combined to do the interpolation, represented mathematically by `p = x*a + y*b + z*c` where `x`, `y` and `z` correspond to the repective area proportions and `p` the fragment colour. I recommend you check out [Scratchapixel's awesome tutorial on barycentric coordinates for a more in-depth look](https://www.scratchapixel.com/lessons/3d-basic-rendering/ray-tracing-rendering-a-triangle/barycentric-coordinates). Now that means we need to find the area of each triangle, a feat easily achieved using the [scalar triple product](https://en.wikipedia.org/wiki/Triple_product#Geometric_interpretation). At a first glance this looks kind of useless, we don't care about the volume of a parallelepiped at all! But think back, how do we calculate the area of a triangle? Using `0.5 * base * height`, or half the area of a parallelogram, and a paralellogram is just a flat parallelepiped. Triple product is pretty easy to calculate since we have very simple definitions of both dot and cross product which use only addition, subtraction and multiplication. What's more is that we are using constant `1`'s and `0`'s since we are converting 2d vectors to 3d vectors and using a constant height of `1` for the parallelepiped so we can simplify the equation a lot. When doing some mathematics nothing beats a pen and paper so let's pull some out and get to work.
+Each of the *lambda*s (`λ`) corresponds to the percentage of area that each sub-triangle takes from the total area. This is the proportion, or weight, that we apply to a vertex when interpolating. This means when the green triangle covers all of the area for a `λ` value of 1, the fragment is on point `a`. This is why we use the triangle opposite a point. The values at each vertex are weighted, or scaled, then combined to do the interpolation, represented mathematically by `p = x*a + y*b + z*c` where `x`, `y` and `z` correspond to the repective area proportions and `p` the fragment colour. I recommend you check out [Scratchapixel's awesome tutorial on barycentric coordinates for a more in-depth look](https://www.scratchapixel.com/lessons/3d-basic-rendering/ray-tracing-rendering-a-triangle/barycentric-coordinates). Now that means we need to find the area of each triangle, a feat easily achieved using the [scalar triple product](https://en.wikipedia.org/wiki/Triple_product#Geometric_interpretation). At a first glance this looks kind of useless, we don't care about the volume of a parallelepiped at all! But think back, how do we calculate the area of a triangle? Using `0.5 * base * height`, or half the area of a parallelogram, and a parallelogram is just a flat parallelepiped. Triple product is pretty easy to calculate since we have very simple definitions of both dot and cross product which use only addition, subtraction and multiplication. What's more is that we are using constant `1`'s and `0`'s since we are converting 2d vectors to 3d vectors and using a constant height of `1` for the parallelepiped so we can simplify the equation a lot. When doing some mathematics nothing beats a pen and paper so let's pull some out and get to work.
 
 ![Simplifying scalar triple product for finding the area of a triangle given 2 edge vectors](/blog/assets/simplify_triple_product.jpg)
 
@@ -426,7 +426,7 @@ Vector2 {
 
 The final cog to put in place is to actually use the interpolated coordinates and sample when setting a pixel.
 
-In `Framebuffer::draw_tri()` we now change the two occurences of
+In `Framebuffer::draw_tri()` we now change the two occurrences of
 
 ~~~rust
 self.set(x, y, Colour(0xFF0000FF))

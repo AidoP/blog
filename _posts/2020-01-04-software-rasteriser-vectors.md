@@ -5,7 +5,7 @@ title: "Writing a Software Rasteriser: 0.Vectors"
 The single most expensive component of your PC is *probably* your graphics card. Despite this, you mainly use it for one thing: computer graphics. So what makes it so special?
 What your GPU is mostly doing is drawing things to the screen, in batches to make it much faster, doing so by drawing triangles.
 The rasterisation, converting to a flat image of pretty pixels, of triangles is what the GPU excels at and is what allows it to display 2D games and interfaces as well as complex 3D scenes.
-Our goal is to replace the GPU with our own software which may not be nearly as fast, but a good learning experience as well as a challenge, though it shouldn't be hard as id Software have already done it with much, much slower hardware and without all of the problems solved for them. Nontheless, we will manage to struggle along the way, as that is how we learn. On top of the software rasteriser we will build a basic 3d game using binary space partitioning, a technique to compensate for the slow render speed.
+Our goal is to replace the GPU with our own software which may not be nearly as fast, but a good learning experience as well as a challenge, though it shouldn't be hard as id Software have already done it with much, much slower hardware and without all of the problems solved for them. Nonetheless, we will manage to struggle along the way, as that is how we learn. On top of the software rasteriser we will build a basic 3d game using binary space partitioning, a technique to compensate for the slow render speed.
 
 By the way, I'll be using Rust. It shouldn't be too hard to follow even if it is your first time with it but language doesn't matter much for concepts anyway so don't worry if it looks like gibberish to you.
 
@@ -15,7 +15,7 @@ The repo is available at [AidoP/tendon](https://github.com/AidoP/tendon).
 
 To start our journey we need a solid maths library beneath our feet to prevent us falling too far. Computer graphics is fairly maths heavy, but for the basics we only need to understand Vectors and Matrices.
 
-Start a new project by creating a directory then using `$ cargo init`{:.language-shell} inside. Now we should add a `src/lib.rs` file on the offchance we want to reuse components of our program, such as the maths library.
+Start a new project by creating a directory then using `$ cargo init`{:.language-shell} inside. Now we should add a `src/lib.rs` file on the off-chance we want to reuse components of our program, such as the maths library.
 The real reason you should do this will come about later. `lib.rs` needs to know where to find our future maths module so we add, and re-export it as so:
 
 ~~~rust
@@ -152,7 +152,7 @@ pub fn cross(self, other: Self) -> Self {
 }
 ~~~
 
-The Vector3 structure is looking pretty slick now with everything we could want for now. A Vector2 is next on the list but I won't cover it here since it is almost identical to its higher-dimension sibling. Simply remove the z-component and the cross product function after a highly sophisticated copy-paste. Looking back at the test for cross product and seeing all those `0.0`'s is a great reminder that we missed some last functions we will proably want in the future. First we will want to implement `Default` on our vectors to get an easy zero vector, this could be done manually in an `impl`, or since `f64` already implements `Default` it could simply be added into the derive list at the top of the function like so.
+The Vector3 structure is looking pretty slick now with everything we could want for now. A Vector2 is next on the list but I won't cover it here since it is almost identical to its higher-dimension sibling. Simply remove the z-component and the cross product function after a highly sophisticated copy-paste. Looking back at the test for cross product and seeing all those `0.0`'s is a great reminder that we missed some last functions we will probably want in the future. First we will want to implement `Default` on our vectors to get an easy zero vector, this could be done manually in an `impl`, or since `f64` already implements `Default` it could simply be added into the derive list at the top of the function like so.
 
 ~~~rust
 #[derive(Copy, Clone, Debug, Default)]

@@ -30,9 +30,9 @@ To access the framebuffer we open its file, `/dev/fb0` then memory map the file 
 - Write our own function which performs the system call.
 - Use a crate which exposes `mmap` to Rust.
 
-Using someone elses crate is no fun so we can just dive into unsafe! Making a system call requires some assembly which can only be done with nightly Rust. Calling the C function in Rust sounds simple, but it would require rewriting all the headers in Rust before we can actually call them. Our best bet is to write the logic in C then call a few simpler functions. [The nomicon explains](https://doc.rust-lang.org/nomicon/ffi.html) the process of calling an FFI function.
+Using a [crate](https://crates.io) is no fun so we can just dive into unsafe! Making a system call requires some assembly which can only be done with nightly Rust. Calling the C function in Rust sounds simple, but it would require rewriting all the headers in Rust before we can actually call them. Our best bet is to write the logic in C then call a few simpler functions. [The nomicon explains](https://doc.rust-lang.org/nomicon/ffi.html) the process of calling an FFI function.
 
-We will declare the functions in Rust before moving over to define them in C. We add `#[repr(C)]` to the structure to ensure it has the same memory layout as the one we will define in C. The creation of the framebuffer could also fail for a number of reasons so we must be able to indicate when file creation fails, the easiest way of which is to set buffer to null in C and return early with a partially filled struct. We must ensure buffer is not null before looking at any other fields or else we would encounter undefined behaviour. Our struct in both languages must match with equivalent types at all times to ensure we do not experience undefined behaviour, this applies to the `extern "C"` functions too. To move the manual memory management of C into the [RAII world of Rust](https://doc.rust-lang.org/rust-by-example/scope/raii.html) we use the `Drop` operator to cleanup when Rust is ready for us to.
+We will declare the functions in Rust before moving over to define them in C. We add `#[repr(C)]` to the structure to ensure it has the same memory layout as the one we will define in C. The creation of the framebuffer could also fail for a number of reasons so we must be able to indicate when file creation fails, the easiest way of which is to set buffer to null in C and return early with a partially filled struct. We must ensure buffer is not null before looking at any other fields or else we would encounter undefined behaviour. Our struct in both languages must match with equivalent types at all times to ensure we do not experience undefined behaviour, this applies to the `extern "C"` functions too. To move the manual memory management of C into the [RAII world of Rust](https://doc.rust-lang.org/rust-by-example/scope/raii.html) we use the `Drop` operator to clean up when Rust is ready for us to.
 
 ~~~rust
 struct Framebuffer;
@@ -84,7 +84,7 @@ fn main() {
 }
 ~~~
 
-[`cc`](https://crates.io/crates/cc) is a crate for compiling and linking C parts to a Rust project exactly like in our usecase. We only need it during compilation, not as part of our program, so we include it as a `build-dependency` rather than a normal `dependency` in `Cargo.toml`.
+[`cc`](https://crates.io/crates/cc) is a crate for compiling and linking C parts to a Rust project exactly like in our use case. We only need it during compilation, not as part of our program, so we include it as a `build-dependency` rather than a normal `dependency` in `Cargo.toml`.
 
 ~~~toml
 [build-dependencies]
@@ -207,7 +207,7 @@ Everything looks ok, but now there is a new `Colour` type we haven't yet defined
 pub struct Colour(pub u32);
 ~~~
 
-We use `#[repr(transparent)]` to tell the Rust compiler to ensure the structure is the exact same as a `u32` in memory. You might wonder why we bother using a seperate type at all then, and the answer to that is that it ensures that when we ask for a `Colour`, we really get a one rather than some arbitrary number. This is extending the type system to better ensure program correctness. We also make sure to do the conversion late so that we can store a colour before we know the layout of a colour for a particular system, such as when we eventually store material colours. Each channel is shifted so the colour bytes start at 0 before being shifted back to where the graphics card expects it, then being added to the other channels using the bitwise or (`|`) operator.
+We use `#[repr(transparent)]` to tell the Rust compiler to ensure the structure is the exact same as a `u32` in memory. You might wonder why we bother using a separate type at all then, and the answer to that is that it ensures that when we ask for a `Colour`, we really get a one rather than some arbitrary number. This is extending the type system to better ensure program correctness. We also make sure to do the conversion late so that we can store a colour before we know the layout of a colour for a particular system, such as when we eventually store material colours. Each channel is shifted so the colour bytes start at 0 before being shifted back to where the graphics card expects it, then being added to the other channels using the bitwise or (`|`) operator.
 
 ~~~rust
 impl Colour {
